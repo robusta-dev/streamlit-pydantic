@@ -11,7 +11,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
 import pandas as pd
 import streamlit as st
 from pydantic import BaseModel, ValidationError, parse_obj_as
-from pydantic.color import Color
 from pydantic.json import pydantic_encoder
 
 from streamlit_pydantic import schema_utils
@@ -116,7 +115,7 @@ class InputUI:
             "properties", {}
         )
         self._schema_references = self._input_class.schema(by_alias=True).get(
-            "$defs", {}
+            "definitions", {}
         )
 
         # TODO: check if state has input data
@@ -441,11 +440,6 @@ class InputUI:
         elif property.get("example") is not None:
             streamlit_kwargs["value"] = property["example"]
 
-        if isinstance(streamlit_kwargs.get("value"), Color):
-            streamlit_kwargs["value"] = streamlit_kwargs["value"].as_hex()
-        elif isinstance(streamlit_kwargs.get("value"), str):
-            streamlit_kwargs["value"] = Color(streamlit_kwargs["value"]).as_hex()
-
         if property.get("format") == "text":
             # Use text input if specified format is text
             return streamlit_app.text_input(**{**streamlit_kwargs, **overwrite_kwargs})
@@ -533,8 +527,6 @@ class InputUI:
             data_dict = self._get_value(key)
         elif property.get("init_value"):
             data_dict = property.get("init_value")
-        elif property.get("default"):
-            data_dict = property.get("default")
         else:
             data_dict = {}
 
@@ -668,9 +660,9 @@ class InputUI:
         streamlit_kwargs = self._get_default_streamlit_input_kwargs(key, property)
         overwrite_kwargs = self._get_overwrite_streamlit_kwargs(key, property)
 
-        if "init_value" in property:
+        if property.get("init_value"):
             streamlit_kwargs["value"] = property.get("init_value")
-        elif "default" in property:
+        elif property.get("default"):
             streamlit_kwargs["value"] = property.get("default")
 
         # special formatting when rendering within a list/dict
@@ -756,8 +748,6 @@ class InputUI:
 
             if property.get("init_value"):
                 new_property["init_value"] = property["init_value"].get(property_key)
-            if property.get("default"):
-                new_property["default"] = property["default"].get(property_key)
 
             new_property["readOnly"] = property.get("readOnly", False)
 
@@ -784,8 +774,6 @@ class InputUI:
         )
 
         object_reference["init_value"] = property.get("init_value", None)
-
-        object_reference["default"] = property.get("default", None)
 
         object_reference["readOnly"] = property.get("readOnly", None)
 
@@ -988,8 +976,6 @@ class InputUI:
             data_list = self._get_value(key)
         elif property.get("init_value"):
             data_list = property.get("init_value")
-        elif property.get("default"):
-            data_list = property.get("default")
         else:
             data_list = []
 
@@ -1182,7 +1168,7 @@ class OutputUI:
 
         model_schema = output_data.schema(by_alias=False)
         model_properties = model_schema.get("properties")
-        definitions = model_schema.get("$defs")
+        definitions = model_schema.get("definitions")
 
         if model_properties:
             for property_key in output_data.__dict__:
