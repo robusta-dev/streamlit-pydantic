@@ -248,7 +248,7 @@ class InputUI:
         return (
             self._ignore_empty_values
             and (
-                type(value) == int or type(value) == float or isinstance(value, str)
+                type(value) == int or type(value) == float or isinstance(value, str) or type(value) == list
             )  # only for int, float or str
             and not value
             and self._get_value(property_key) is None
