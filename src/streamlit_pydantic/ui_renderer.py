@@ -143,23 +143,12 @@ class InputUI:
             instance_dict = None
             instance_dict_by_alias = None
 
-        for property_key in self._schema_properties.keys():
-            streamlit_app = self._streamlit_container
-            if property_key not in required_properties:
-                if self._group_optional_fields == "sidebar":
-                    streamlit_app = self._streamlit_container.sidebar
-                elif self._group_optional_fields == "expander":
-                    properties_in_expander.append(property_key)
-                    # Render properties later in expander (see below)
-                    continue
-
+        def handle_property(property_key, container, instance_dict, instance_dict_by_alias):
             property = self._schema_properties[property_key]
-
             if not property.get("title"):
                 # Set property key as fallback title
                 property["title"] = _name_to_title(property_key)
 
-            # if there are instance values, add them to the property dict
             if instance_dict is not None:
                 instance_value = instance_dict.get(property_key)
                 if instance_value in [None, ""] and instance_dict_by_alias:
@@ -173,11 +162,23 @@ class InputUI:
                         property["instance_class"] = str(type(attr))
 
             try:
-                value = self._render_property(streamlit_app, property_key, property)
+                value = self._render_property(container, property_key, property)
                 if not self._is_value_ignored(property_key, value):
                     self._store_value(property_key, value)
             except Exception:
                 pass
+
+        for property_key in self._schema_properties.keys():
+            streamlit_app = self._streamlit_container
+            if property_key not in required_properties:
+                if self._group_optional_fields == "sidebar":
+                    streamlit_app = self._streamlit_container.sidebar
+                elif self._group_optional_fields == "expander":
+                    properties_in_expander.append(property_key)
+                    # Render properties later in expander (see below)
+                    continue
+
+            property = handle_property(property_key, streamlit_app, instance_dict, instance_dict_by_alias)
 
         if properties_in_expander:
             # Render optional properties in expander
@@ -185,22 +186,7 @@ class InputUI:
                 "Optional Parameters", expanded=False
             ):
                 for property_key in properties_in_expander:
-                    property = self._schema_properties[property_key]
-
-                    if not property.get("title"):
-                        # Set property key as fallback title
-                        property["title"] = _name_to_title(property_key)
-
-                    try:
-                        value = self._render_property(
-                            self._streamlit_container, property_key, property
-                        )
-
-                        if not self._is_value_ignored(property_key, value):
-                            self._store_value(property_key, value)
-
-                    except Exception:
-                        pass
+                    handle_property(property_key, self._streamlit_container, instance_dict, instance_dict_by_alias)
 
         return self._session_state[self._session_input_key]
 
@@ -1354,3 +1340,4 @@ def pydantic_form(
                 st.error(error_text)
                 return None
     return None
+
